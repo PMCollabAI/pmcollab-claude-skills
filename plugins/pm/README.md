@@ -69,7 +69,7 @@ For non-interactive environments, swap the bundled `.mcp.json` for the PAT varia
   "mcpServers": {
     "pmc-mcp": {
       "command": "npx",
-      "args": ["-y", "mcp-remote@0.1.18", "https://pmcollab.ai/mcp/pmc", "--header", "Authorization: Bearer ${PMC_PAT}"]
+      "args": ["-y", "mcp-remote@0.1.37", "https://pmcollab.ai/mcp/pmc", "--header", "Authorization: Bearer ${PMC_PAT}"]
     }
   }
 }
