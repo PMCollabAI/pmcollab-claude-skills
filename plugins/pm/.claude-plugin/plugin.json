@@ -1,6 +1,6 @@
 {
   "name": "pm",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "PMCollab Claude Code suite — workspace + use-case pickers, context loaders, chat-to-usecase, chat-to-spec-review, spec-align, process-queue. Ships as /pm:<command> slash commands and auto-trigger skills, with the shared pmc-mcp MCP server bundled.",
   "author": { "name": "PMCollab, Inc.", "url": "https://pmcollab.ai" },
   "homepage": "https://github.com/pmcollabai/pmcollab-claude-skills"
