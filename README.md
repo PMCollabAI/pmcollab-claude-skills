@@ -38,14 +38,6 @@ plugins/pm/                       # the consolidated plugin
   README.md
 ```
 
-## Source-of-truth
-
-This plugin is authored and iterated inside the PMCollab product repo at `pmcollab-claude-plugins/` and mirrored to the public repo on release. To contribute a change, open a PR against the source repo; releases get pushed here.
-
-## Migration from `pmc-*` plugins
-
-This marketplace previously shipped 10 individual `pmc-*` plugins. They have been replaced by the single `pm` plugin. See the [Migration section in `plugins/pm/README.md`](./plugins/pm/README.md#migration-from-pmc--plugins) for the old-command → new-command mapping and uninstall steps.
-
 ## License
 
 MIT — see [LICENSE](./LICENSE).
