@@ -1,6 +1,6 @@
 ---
 name: load-usecase-context
-description: Load a tight LLM-context pack for a selected PMCollab use case via one MCP call (usecase_load_context). Use after select-usecase has resolved {workspaceId, useCaseId}, when another PMCollab skill says "load context for this use case," or when the user says "pull down the use case context" / "load the spec for the selected use case." Returns one JSON object containing the use case essentials (title, description, status, detail bullets grouped by field, linked personas), every capability under it with its non-rejected behaviors compacted to {group, content}, and the CurrentSpec markdown (baseline creation spec + applied change specs collapsed) with lineage. currentSpec is null when not yet promoted.
+description: Load a tight LLM-context pack for a selected PMCollab use case via one MCP call (usecase_load_context). Use after select-usecase has resolved {workspaceId, useCaseId}, when another PMCollab skill says "load context for this use case," or when the user says "pull down the use case context" / "load the spec for the selected use case." Returns one JSON object containing the use case essentials (title, description, status, detail bullets grouped by field, linked personas), every capability under it with its non-rejected behaviors compacted to {group, content}, and the CurrentSpec markdown (baseline creation spec + applied change specs collapsed) with its lineage and the baselineSpecDocumentId a change spec is authored against. currentSpec is null when not yet promoted.
 ---
 
 # load-usecase-context
@@ -27,6 +27,7 @@ If either is missing, invoke `select-usecase` first (which auto-chains to `selec
 - **One MCP call.** Make exactly one `usecase_load_context` call per invocation — do not pad with `workspace_list_usecases`, `spec_document_list`, or other discovery calls. The whole point is one tight round trip.
 - **Pass the pack through.** Do not summarize, reword, or reformat the JSON returned by the tool. The calling skill consumes the structured pack directly; lossy paraphrasing defeats the purpose.
 - **Handle null `currentSpec` cleanly.** When `currentSpec === null` the use case has not been promoted yet (or has no spec markdown). Surface that fact to the user — don't fabricate a spec.
+- **`currentSpec.baselineSpecDocumentId` is the baseline a change spec is authored against**, on both `source` values — `creation-spec` just means no change spec has been applied yet, which is the normal state of a freshly promoted use case. Null means no promoted design spec backs the record, and the caller resolves one with `spec_document_list_by_usecase`. `baseCreationSpecId` is lineage only: it is a CreationSpec id in a different id space and is never a `baselineSpecDocumentId`.
 - **Don't edit anything.** This skill is read-only.
 
 ## Step 1 — Validate inputs

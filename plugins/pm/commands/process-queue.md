@@ -1,12 +1,16 @@
 ---
-description: Pick a Code Factory queue item, load the Claude starter kit (CLAUDE.md / SPEC.md / BUILD_PLAN.md / prompt.md), and draft an implementation plan for PM review.
+description: Pick up the next unit of Code Factory work — a single queue item OR a train of several items sharing one branch and one pull request — load the Claude starter kit for everything claimed, draft an implementation plan for PM review, and submit the finished pull request for PM approval without waiting on it. Offers to form a train when several waiting items look groupable.
 ---
 
 # /pm:process-queue
 
 Pick an active Code Factory queue item from a PMCollab workspace, claim it for the caller, pull down the Claude starter kit assets the picker needs to plan the work, give the user a quick TL;DR of the loaded spec, and have Claude draft an implementation plan for the PM to review **before** any code is written.
 
-The command's primary stopping point is "plan ready for review." After the plan is approved and the picker has actually implemented + pushed the work as a PR, the command can also mark the queue item complete via `codefactory_queue_complete` with the PR URL — see Step 10. The command still does NOT run the code-gen pipeline, push commits on the user's behalf, or release the item back to the pool.
+The command's primary stopping point is "plan ready for review." After the plan is approved and the picker has actually implemented + pushed the work as a PR, the command submits it for PM approval via `codefactory_queue_submit_for_approval` (Step 10) and **stops** — a pull request is a proposal awaiting a merge, not a finished deliverable, so a PM decides in PMCollab's WORK STREAM and this session never waits on that. The command still does NOT run the code-gen pipeline, push commits on the user's behalf, or release the item back to the pool.
+
+**This is the only door.** A picker asks for work; it should not have to know the work's SHAPE before choosing where to ask. A unit is either a single queue item or a **train** — several items travelling in one branch, one pull request and one review — and the flow adapts to whichever the user picks. A member of a live train is never offered as individual work, and there is no separate train command; the full contract for the train path is in `skills/process-queue/SKILL.md` (every step carries a **▸ Train** note where it differs).
+
+Three entry shapes: a **first pass** (steps 1–10 as written), **rework** — an item a PM previously sent back, revised on its existing PR branch rather than re-implemented (Step 6.5) — and a **train**, one claim over several items ending in a mandatory per-item mapping saying which members it actually delivered.
 
 ## Required inputs
 
@@ -18,7 +22,10 @@ The command's primary stopping point is "plan ready for review." After the plan 
 - **Don't claim something already claimed.** `codefactory_queue_pickup` returns a `conflict` error when someone else won the race — surface it and re-list instead of retrying blindly.
 - **Don't write code or repo files during the planning phase.** Implementation is a separate, PM-approved step that happens after Step 9.
 - **Don't call `codefactory_queue_release` from this command.** Release is a user-driven decision; the command never drops the work back to the pool on its own.
-- **Only call `codefactory_queue_complete` in Step 10, after the picker confirms the PR URL.** Never invent a PR URL and never auto-complete a claim that has no shipped deliverable.
+- **Never wait for the PM.** Once Step 10 has submitted the work, the item is out of your hands — do not poll, do not ask the user to sit tight, do not schedule a check-back.
+- **Never invent a PR URL**, and never submit a claim that has no pushed deliverable.
+- **`codefactory_queue_complete` is not the PR path.** It is for the in-app code-gen pipeline (`artifactId`); a `pullRequestUrl` passed to it just redirects into the same approval gate.
+- **Rework revises, it never restarts.** On an item with a `rework` block: no second pull request, no re-planning what the PM did not object to.
 
 ## Step 1 — Resolve workspace
 
@@ -26,7 +33,7 @@ If `workspaceId` is missing, run `/pm:select-workspace` (see `commands/select-wo
 
 ## Step 2 — List the active queue
 
-Call `codefactory_queue_list` with the resolved `workspaceId` and no `status` filter. The tool defaults to the active set (`waiting_for_resources` / `in_progress` / `error`) — the same items the Code Factory Queue badge counts in the web UI.
+Call `codefactory_queue_list` with the resolved `workspaceId` and no `status` filter. The tool defaults to the active set (`waiting_for_resources` / `in_progress` / `pending_approval` / `awaiting_spec_approval` / `error`) — the same items the Code Factory Queue badge counts in the web UI.
 
 If the response's `items` array is empty:
 
@@ -41,8 +48,9 @@ Otherwise render a numbered list. For each item include:
 - claimer name when status is `in_progress`
 - short `notes` preview if present
 - short `errorMessage` preview when status is `error`
+- a **`REWORK round <n>`** marker plus the newest `reworkRequests[]` reason when the item has been sent back
 
-Filter the picker UI to only the items the user can actually take next — items in `waiting_for_resources` (free to claim) and items in `error` (retryable). Items already `in_progress` and held by someone else should appear in the list but be marked "claimed by `<claimer>` — not pickable" so the user sees the queue state but can't pick them.
+Filter the picker UI to only the items the user can actually take next — items in `waiting_for_resources` (free to claim, including rework items) and items in `error` (retryable). Items already `in_progress` and held by someone else appear marked "claimed by `<claimer>` — not pickable". Items in `pending_approval` appear marked "delivered — awaiting PM approval, not pickable": the work is done and a human owns the next move. Items in `awaiting_spec_approval` appear marked with their `statusMessage` (e.g. "waiting for 10 spec approvals — not pickable"): deliberately unassigned while the PM decides the spec changes the implementation proposed, and back in the pool as rework only if changes are wanted.
 
 ## Step 3 — User picks one
 
@@ -62,6 +70,12 @@ Call `codefactory_queue_pickup` with the resolved `workspaceId` + the chosen `it
 
   > "Claimed **`<spec title or name>`** (`<itemId>`) for you. Fetching the Claude starter kit now."
 
+- If the response carries a non-null `rework` block, say so instead:
+
+  > "Claimed **`<spec title or name>`** (`<itemId>`) — this is **rework round `<n>`**. There is already a pull request (`<pullRequestUrl>`) on branch `<branch>`; we revise that, we don't rebuild it."
+
+  Then follow Step 6.5 as well as Step 6.
+
 ## Step 5 — Fetch the Claude starter kit
 
 Call `codefactory_queue_generate_deployment_target` with `workspaceId` + `itemId`. The response is a JSON envelope:
@@ -76,9 +90,12 @@ Call `codefactory_queue_generate_deployment_target` with `workspaceId` + `itemId
       { "filename": "BUILD_PLAN.md", "content": "..." },
       { "filename": "prompt.md", "content": "..." }
     ]
-  }
+  },
+  "rework": null
 }
 ```
+
+On a send-back the `bundle.files` array also carries a `REWORK.md` (first), and `rework` is non-null.
 
 The deployment mode (`new_surface` vs `augment_existing`) determines what guidance is baked into `CLAUDE.md`. Honor it — don't propose scaffolding a fresh repo when the work item is `augment_existing`.
 
@@ -94,6 +111,19 @@ Treat each `bundle.files[i].content` value as the in-session contents for that f
 - **`prompt.md`** → an LLM-friendly rendering of the same spec for cross-reference.
 
 Do not paste these files into chat in full unless the user asks — they're context, not output.
+
+## Step 6.5 — If this is rework, plan the REVISION (not the implementation)
+
+Trigger when Step 4 returned a `rework` block or the bundle contains `REWORK.md`. Skip on a first pass.
+
+The item already has a delivered pull request; the PM asked for changes rather than throwing it away. Your job is the delta.
+
+1. **Read `REWORK.md` first** — round number, the PM's reason, the requested modifications as a checklist, the PR URL, the branch, and every earlier round.
+2. **Check out the existing branch** from `rework.branch`. Do not create a new branch and do not open a second pull request.
+3. **Read the existing diff** before planning — most of the work is already there and was not objected to.
+4. **Scope the plan to the send-back only.** Every plan item must trace to the `reason` or a listed modification. Disagree in the plan rather than silently skipping.
+5. **Check `history` for repeats** — an objection in more than one round was not resolved last time; start there.
+6. **Push to the same branch**, then go to Step 10 with a `summary` that answers each modification point by point.
 
 ## Step 7 — Show the spec TL;DR
 
@@ -140,56 +170,61 @@ A command cannot programmatically enter Claude Code's plan mode (it's an environ
 
 When the plan is ready, tell the user:
 
-> "Plan drafted for **`<spec title>`** (queue item `<itemId>`). Review it; on approval, the picker (you or a follow-up agent) executes the plan, pushes the work as a pull request, and then comes back here so I can mark the queue item complete via `codefactory_queue_complete` with the PR URL. If you'd rather drop the work back to the pool, the picker can release it via `codefactory_queue_release`."
+> "Plan drafted for **`<spec title>`** (queue item `<itemId>`). Review it; on approval, the picker executes the plan, pushes the work as a pull request, and comes back here so I can submit it for PM approval via `codefactory_queue_submit_for_approval`. Once submitted, this item is off our plate — the PM approves and merges it in PMCollab, or sends it back to the queue with their reasons."
 
-The command does NOT auto-implement. Wait for the picker to explicitly confirm that a PR has been pushed before moving to Step 9.5.
+The command does NOT auto-implement. Wait for the picker to confirm a PR has been pushed before moving to Step 10.
 
-## Step 9.5 — Reconcile any spec changes the picker negotiated
+## Step 9.5 — Collect the spec deltas the picker negotiated
 
-While implementing, the picker almost always negotiates the spec against the real code: it corrects implementation detail that bled into the spec inaccurately, and it intentionally drops scope (the plan's **Out of scope** section). Those decisions must get back into the spec, but most are routine — the PM should only see the genuine product calls.
+While implementing, the picker almost always negotiates the spec against the real code. Collect those deltas here and pass them to Step 10's single submission, so the PM gets **one** decision covering both the spec changes and the merge.
 
-Trigger this step when the picker reports the PR (before Step 10), if the implementation diverged from `SPEC.md`. If the code matches the spec exactly, skip to Step 10.
+Collect each delta as one of:
 
-1. Collect the negotiated deltas, each as one of:
-   - **`kind: "change"`** — an edit to an existing spec item. Set `changeType` to `modification` / `removal`, `sectionHeading` to the section it touches, `beforeContent` to the existing text, `afterContent` to the corrected text.
-   - **`kind: "out_of_scope"`** — something deliberately dropped. Use `changeType: "addition"`, the `sectionHeading` of the spec's Non-Goals / V1 Scope Boundary section, and put the dropped-scope note in `afterContent`.
-   - Give each a one-sentence `rationale` and cite `codeProvenance` (file paths / PR URL).
-2. Call `codefactory_queue_propose_spec_changes` with `{ workspaceId, itemId, deltas }`. An architect/APM triage runs per delta:
-   - **Auto-applied** deltas commit straight to the spec as a new version — no PM action.
-   - **Escalated** deltas become a CoWorkStream spec-review item. When the response is `status: "escalated"`, **STOP** — do NOT complete the queue item. Tell the user the spec changes were sent to the PM (`reviewId`), completion is blocked, and the item will return to the queue once resolved (the PM can also override).
-3. Only when the response is `status: "clear"` proceed to Step 10.
+- **`kind: "change"`** — an edit to an existing spec item. Set `changeType` to `modification` / `removal`, `sectionHeading` to the section it touches, `beforeContent` to the existing text, `afterContent` to the corrected text.
+- **`kind: "out_of_scope"`** — something deliberately dropped. Use `changeType: "addition"`, the `sectionHeading` of the spec's Non-Goals / V1 Scope Boundary section, and put the dropped-scope note in `afterContent`.
 
-## Step 10 — Complete the queue item once a PR is up
+Give each a one-sentence `rationale` and cite `codeProvenance` (file paths / PR URL). If the code matches the spec exactly, pass `deltas: []`. (`codefactory_queue_propose_spec_changes` still works standalone, but calling it separately then submitting runs reconciliation twice.)
 
-Trigger when the user says any of:
-- "PR is up: `<url>`" / "PR pushed, mark it done"
-- "Complete the queue item with this PR"
-- Replies to the Step 9 hand-off message with a GitHub / Azure DevOps pull-request URL
+## Step 10 — Submit for PM approval, then stop
 
-Required inputs at this step:
-- `workspaceId` + `itemId` — carry forward from the earlier steps; do NOT re-prompt.
-- `pullRequestUrl` — the URL the user just pasted. Validate that it is an `https://` URL pointing at a PR (GitHub `/pull/N`, Azure DevOps `/pullrequest/N`, etc.). If it does not look like a PR URL, ask the user to confirm before proceeding.
-- `name` (optional) — defaults to the work item's name when omitted.
+Trigger when the user reports the PR ("PR is up: `<url>`", "submit the queue item", or a reply to Step 9 with a PR URL).
 
-Call `codefactory_queue_complete` with `{ workspaceId, itemId, pullRequestUrl, name? }`. Do NOT pass `artifactId` — the backend creates a stub `CodeFactoryArtifact` (status `complete`, `pullRequestUrl` set) on the fly and links it to the queue card.
+Required inputs:
+- `workspaceId` + `itemId` — carry forward; do NOT re-prompt.
+- `pullRequestUrl` — validate it looks like a PR URL (GitHub `/pull/N`, Azure DevOps `/pullrequest/N`). On a rework round this is the SAME PR as before.
+- `summary` — what was built and anything the PM should weigh. On rework, how each requested modification was addressed.
+- `deltas` — from Step 9.5; `[]` when the code matches the spec.
+
+Call `codefactory_queue_submit_for_approval` with `{ workspaceId, itemId, pullRequestUrl, summary, deltas }`. The backend records the PR, triages the deltas (routine ones auto-apply to the spec; genuine product calls ride on the same approval), moves the item to `pending_approval` — or to `awaiting_spec_approval`, parked and unassigned, when anything escalated — posts a matching note on the pull request, and raises the WORK STREAM card. Report which status came back.
+
+On success, confirm and **stop**:
+
+> "Submitted **`<spec title>`** (`<itemId>`) for PM approval on `<pullRequestUrl>`. `<n>` routine spec change(s) auto-applied; `<m>` need a product call and ride on the same decision. This item is off our plate. What's next?"
+
+Do NOT poll for the outcome, do NOT call `codefactory_queue_complete`, and do NOT tell the user to wait.
 
 Error handling:
 
-- `not_found` — the work item was deleted between Step 4 and now. Tell the user and stop.
-- `not_in_progress` — the item was released, cancelled, or already completed. Surface the returned `currentStatus` and stop; do NOT silently re-claim.
-- `missing_input` — defensive guard (the call shape is wrong). Re-prompt for the PR URL and retry once.
-- `spec_reconciliation_pending` — Step 9.5 escalated spec changes the PM hasn't resolved. Do NOT auto-retry. Tell the user completion is blocked until the PM resolves the spec-review item (`reviewId` in the error), or re-call with `override: true` only if the PM explicitly chooses to complete without reconciling.
+- `not_found` — the work item was deleted. Tell the user and stop.
+- `not_in_progress` — released, cancelled, or completed elsewhere. Surface `currentStatus` and stop; do NOT silently re-claim. (`pending_approval` is not an error — a re-submission refreshes the open gate. `awaiting_spec_approval` means it is already parked on the PM's spec decisions: report and stop.)
+- `conflict` — a concurrent transition. Re-list and report; do not retry blindly.
 
-On success, confirm:
+### When the PM sends it back
 
-> "Marked queue item `<itemId>` complete. Linked to PR `<pullRequestUrl>` via artifact `<artifactId from response>`."
+The item returns to `waiting_for_resources` carrying the PM's reasons and requested modifications. The next `/pm:process-queue` run picks it up as rework (Step 4 → Step 6.5); the `rework` block is the whole hand-off, so nothing has to be remembered across sessions.
 
-Then stop. The command is done.
+### Completing without the gate
+
+`codefactory_queue_complete` with `override: true` completes an item outright — no approval, no merge, escalated spec changes abandoned. For the case where the PR was already merged by hand. Use only when the user explicitly asks, and say what it skips.
 
 ## Out of scope
 
 - Running the in-app code-gen pipeline (the one that produces a full `CodeFactoryArtifact` with generated files).
-- Implementing the spec for the user — the picker drives the implementation; this command plans and books the completion.
+- Implementing the spec for the user — the picker drives the implementation; this command plans and books the hand-off.
 - Calling `codefactory_queue_release` from this command.
-- Auto-completing without a PR URL the user has explicitly provided.
-- Bulk-processing multiple queue items in one invocation — one item per run.
+- Submitting without a PR URL the user has explicitly provided.
+- **Waiting on, polling for, or reporting the PM's approval decision.** The gate is asynchronous by design.
+- Approving or merging on the PM's behalf.
+- Running the in-app Code Factory agent lane, which runs trains by its own path with its own preflight.
+- Dissolving a train on your own initiative, or editing a committed train's membership — a train that will never run must be dissolved or its members stay locked; when the user asks, `codefactory_train_dissolve` does it (workspace admins only), and a new grouping is a fresh compose.
+- Forming a train the user has not agreed to, or forming one as a side effect of looking for work.

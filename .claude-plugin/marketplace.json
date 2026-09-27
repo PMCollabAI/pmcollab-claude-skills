@@ -8,8 +8,8 @@
     {
       "name": "pm",
       "source": "./plugins/pm",
-      "description": "PMCollab Claude Code suite — 8 /pm:<command> slash commands (select-workspace, select-usecase, load-usecase-context, load-code-context, chat-to-usecase, chat-to-spec-review, spec-align, process-queue) plus the shared pmc-mcp MCP server.",
-      "version": "0.2.1",
+      "description": "PMCollab Claude Code suite — 9 /pm:<command> slash commands (select-workspace, select-usecase, load-usecase-context, load-code-context, chat-to-usecase, chat-to-spec-review, quick-change, spec-align, process-queue) plus the shared pmc-mcp MCP server and an opt-in uncaptured-change Stop hook.",
+      "version": "0.5.0",
       "category": "product-management"
     }
   ]

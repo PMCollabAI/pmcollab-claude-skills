@@ -95,14 +95,14 @@ For each `yes`:
   1. Call the `get_spec_schema` MCP tool with `specType: 'CHANGE_SPEC'` to fetch the authoritative schema as JSON. Parse it. This is the single source of truth for which sections exist and which are mandatory — do not author from memory.
   2. Draft the change-spec markdown so the body conforms to the schema:
      - Open with `# Change Specification: <Title>`.
-     - Include a `## Section Deltas` heading. Under it, emit one `### Section N — <title>` subsection per section your finding touches. Section numbers + titles come from the schema's `sectionDeltas.properties` (keys `s2`…`s21` map to Section 2…Section 21; each property's `title` is the canonical heading).
-     - The schema lists `s14` (Migration & Backward Compatibility) and `s15` (Affected Test Surface) as `required` — emit `### Section 14 — Migration & Backward Compatibility` and `### Section 15 — Affected Test Surface` on every change spec, even for trivial drift. For trivial cases write "No migration required." and a one-line regression test note rather than `[Needs Input]`.
+     - Emit one `## N. <title>` section per baseline section your finding touches, between the Change Summary Table and the Readiness Checklist. Section numbers + titles come from the schema's `sectionDeltas.properties` (keys `1`…`23` are the design spec's own section numbers; each property's `title` is the canonical heading).
+     - The schema lists `16` (Migration & Compatibility) and `17` (Affected Test Surface) as `required` — emit `## 16. Migration & Compatibility` and `## 17. Affected Test Surface` on every change spec, even for trivial drift. For trivial cases write "No migration required." and a one-line regression test note rather than `[Needs Input]`.
      - Inside each subsection use `Add:` / `Change:` / `Remove:` blocks. The system's `extractSectionDeltas` parser keys on these verbs to build the auto-generated Change Summary Table — see `backend/src/data/changeSpecHelpers.ts` for the exact grammar.
      - Cite the drift signal that drove the change in a `## Change Proposal` (or equivalent) section near the top: the extracted business rule id, change-log entry id, or file path. Reviewers need WHY, not just WHAT.
   3. Call `spec_document_create` with:
      - `specType: 'CHANGE_SPEC'`
      - `workspaceId`, `useCaseId`
-     - `baselineSpecDocumentId`: `specContext.currentSpec.baseCreationSpecId` from the loaded pack
+     - `baselineSpecDocumentId`: `specContext.currentSpec.baselineSpecDocumentId` from the loaded pack — NOT `baseCreationSpecId`, which is a CreationSpec id in a different id space and leaves the change spec pointing at a document that does not exist. When it is null, resolve a baseline with `spec_document_list_by_usecase` (filter `specType: 'design'` + `status: 'promoted'`) instead of guessing.
      - `name`: a verb-led title derived from the finding (e.g. "Update Section 9 to reflect bulk-import endpoint")
      - `initialMarkdown`: the drafted body
      - `createdBy` / `createdByName`: from the cached identity (`/pm:select-workspace` provides these)

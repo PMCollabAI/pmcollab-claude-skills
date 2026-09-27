@@ -6,13 +6,15 @@ description: Convert the current Claude chat into a PMCollab spec and open a Spe
 
 Take the current conversation, format it into a unified PMCollab spec (NEW_SYSTEM, MODIFICATION, or CHANGE_SPEC), upload it to the chosen workspace, and open a Spec Review session so stakeholders can critique it in chat. Optionally, when the discussion clearly defines a capability, also create the Capability and its Behaviors under the chosen Use Case.
 
+**Routing note:** this command and `/pm:quick-change` produce the same CHANGE_SPEC artifact — the difference is whether review gates the code or trails it. Use this command when the conversation itself carries design thinking worth harvesting into the spec, or the change exceeds quick-change's scope ceiling (>~5 files, multiple use cases, spec-linked surfaces, no promoted baseline). Use `/pm:quick-change` when the user just wants a small, well-scoped edit made and the spec captured behind it.
+
 ## Hard rules
 
 - **Never invent IDs.** Workspace, use case, capability, and chat IDs all come from MCP tool responses. If a step needs an ID you don't have, call the discovery tool first.
 - **Confirm before destructive or visible-to-others steps.** That includes creating the spec document, starting the review (others may get notified), and creating a capability.
 - **One spec per invocation.** Don't try to bulk-create multiple specs in one run.
 - **Stop on maturity gate failure.** If `spec_review_start` returns "Spec Review not available at current maturity stage," surface the message verbatim and stop — don't auto-bump maturity.
-- **Don't fabricate; mark gaps honestly (see Step 3).** Draft from chat context first, inferring where reasonable. Where you inferred a value rather than seeing it stated, prefix the line `[Proposed — needs validation]`. Reserve `[Needs Input]` for *non-required* sections the user explicitly skips — never leave a required section (for CHANGE_SPEC, s14 / s15) as `[Needs Input]`. Reviewers will flag whatever remains.
+- **Don't fabricate; mark gaps honestly (see Step 3).** Draft from chat context first, inferring where reasonable. Where you inferred a value rather than seeing it stated, prefix the line `[Proposed — needs validation]`. Reserve `[Needs Input]` for *non-required* sections the user explicitly skips — never leave a required section (for CHANGE_SPEC, sections 16 Migration & Compatibility / 17 Affected Test Surface) as `[Needs Input]`. Reviewers will flag whatever remains.
 
 ## Step 1 — Classify the spec type
 
@@ -54,8 +56,9 @@ If a `useCaseId` was returned from Step 2, you MUST resolve whether a promoted b
 
 2. Read `currentSpec`:
    - **`currentSpec === null`** → the use case has not been promoted. The CHANGE_SPEC path is not available against this use case. Your spec type is now locked to `NEW_SYSTEM` (no baseline anywhere) or `MODIFICATION` (existing thing, no promoted spec yet) per Step 1.
-   - **`currentSpec` is non-null** → a baseline exists. Lock the spec type to `CHANGE_SPEC` and use `currentSpec.baseCreationSpecId` (when `currentSpec.source === 'current-spec'`) as the `baselineSpecDocumentId` you'll pass to `spec_document_create` in Step 4. Do NOT downgrade to `MODIFICATION` just because the conversation describes a substantial expansion — material-but-incremental work against a promoted baseline is exactly what CHANGE_SPEC is for; CHANGE_SPEC is not size-gated.
-   - **`currentSpec` is non-null but `source !== 'current-spec'`** (rare — promoted use case with only a creation spec, no current-spec lineage) → still CHANGE_SPEC. Call `spec_document_list_by_usecase(workspaceId, useCaseId)` to get the candidate set, filter to `specType ∈ {NEW_SYSTEM, MODIFICATION}` + `status = 'promoted'`, and ask the user to pick one as the baseline. Mention how many were hidden by the filter so the user can opt into a wider view.
+   - **`currentSpec` is non-null** → a baseline exists. Lock the spec type to `CHANGE_SPEC` and use `currentSpec.baselineSpecDocumentId` as the `baselineSpecDocumentId` you'll pass to `spec_document_create` in Step 4. It resolves on both `source` values, so `source === 'creation-spec'` (promoted, no change spec applied yet) is not a reason to go looking for one. Do NOT downgrade to `MODIFICATION` just because the conversation describes a substantial expansion — material-but-incremental work against a promoted baseline is exactly what CHANGE_SPEC is for; CHANGE_SPEC is not size-gated.
+   - **`currentSpec` is non-null but `baselineSpecDocumentId` is null** (promoted, but no promoted design spec backs its record) → still CHANGE_SPEC. Call `spec_document_list_by_usecase(workspaceId, useCaseId)` to get the candidate set, filter to `specType: 'design'` + `status = 'promoted'` — the stored `specType` is `design` or `change`, never the `NEW_SYSTEM` / `MODIFICATION` classification labels — and ask the user to pick one as the baseline. Mention how many were hidden by the filter so the user can opt into a wider view.
+   - **Never pass `currentSpec.baseCreationSpecId`.** It is a CreationSpec id (`cspec_…`) in a different id space from `SpecDocument.id` (`spec_…`); nothing validates it, so the change spec is created pointing at a document that does not exist and promotion then computes no CurrentSpec at all. It is lineage only.
 
 If the user later asks "use a different baseline" at any point in the flow, call `spec_document_list_by_usecase` with the same filter and let them pick — never invent a baseline id.
 
@@ -73,19 +76,19 @@ Call the `get_spec_schema` MCP tool to fetch the canonical structure for the spe
 Parse the returned JSON Schema. It is the single source of truth for the document structure — do not author from memory, do not improvise section numbering. The schema documents:
 
 - Which top-level fields exist (`changeHeader`, `changeProposal`, `sectionDeltas`, `readinessChecklist` for change specs; the analogous fields for design specs).
-- Which sub-sections live under `sectionDeltas.properties` — keys `s2`…`s21` map to Section 2…Section 21 with the canonical heading in each property's `title`.
-- Which sections are `required`. For CHANGE_SPEC the mandatory ones are `s14` (Migration & Backward Compatibility) and `s15` (Affected Test Surface) — always emit these, even for trivial changes ("No migration required." / a one-line regression note are fine; `[Needs Input]` is not).
+- Which sections live under `sectionDeltas.properties` — keys `1`…`23` are the design spec's own section numbers (a change spec numbers each delta section by the design section it modifies), with the canonical heading in each property's `title`.
+- Which sections are `required`. For CHANGE_SPEC the mandatory ones are `16` (Migration & Compatibility) and `17` (Affected Test Surface) — always emit these, even for trivial changes ("No migration required." / a one-line regression note are fine; `[Needs Input]` is not).
 
 **Drafting is interactive, not silent.** Don't just emit a markdown blob with `[Needs Input]` placeholders scattered across required sections. Walk the schema section-by-section:
 
 1. **Propose, don't just ask.** For each section the schema lists, draft your best-effort content from the conversation context first — quote what the user said, infer the rest where reasonable — then present the proposal to the user as `"Section N — <title>: <proposed text>. Looks right? (yes / edit / skip)"`. Drafting from chat context first beats peppering the user with cold-start questions.
 2. **Ask focused follow-ups for thin areas.** When the conversation doesn't supply enough signal for a section, ask one targeted question rather than handing back a placeholder. E.g. "I don't have a clear answer for permissions — who can do this, and who can't?"
 3. **Mark inferences explicitly.** Where you inferred a value from context rather than seeing it stated, prefix the line with `[Proposed — needs validation]` so the user knows to scrutinize it.
-4. **Only use `[Needs Input]` for non-required sections** where the user explicitly says "skip" or "I don't know yet." For required sections (s14 / s15 in CHANGE_SPEC) push back once and get a real answer.
+4. **Only use `[Needs Input]` for non-required sections** where the user explicitly says "skip" or "I don't know yet." For required sections (16 / 17 in CHANGE_SPEC) push back once and get a real answer.
 
 Draft the markdown so the body conforms to the schema:
 
-- Use the schema's section numbers and canonical titles (e.g. `### Section 14 — Migration & Backward Compatibility`), not section numbers from prior conversations or other templates.
+- Use the schema's section numbers and canonical titles in the `## N. Title` heading form (e.g. `## 16. Migration & Compatibility`), not section numbers from prior conversations or other templates. Change Header, Change Proposal, Change Summary Table and Readiness Checklist are named, unnumbered `##` parts.
 - For CHANGE_SPEC bodies, put your section edits under a `## Section Deltas` heading and use `Add:` / `Change:` / `Remove:` blocks inside each subsection. The `extractSectionDeltas` parser (see `backend/src/data/changeSpecHelpers.ts`) keys on those verbs to auto-build the Change Summary Table on save — do NOT hand-author the table.
 - Cite evidence from the chat where you can ("user said: …").
 - Open the body with `# Spec: <Title>` (DESIGN_SPEC) or `# Change Specification: <Title>` (CHANGE_SPEC). Include a Change Header / Change Proposal area for change specs that cites the WHY of the change.
@@ -120,7 +123,7 @@ On approval:
 1. **Create the spec document** with `spec_document_create`:
    - `workspaceId`, `name` (same as chat title), `specType`, `chatId` (from Step 3.5), `useCaseId` (if chosen)
    - `initialMarkdown`: the full drafted markdown from Step 3 (enriched by any todo answers from Step 3.5).
-   - For CHANGE_SPEC: also pass `baselineSpecDocumentId` — the value resolved in Step 2.5 (default = `currentSpec.baseCreationSpecId` from `usecase_load_context`, or the spec the user picked via `spec_document_list_by_usecase`). Never invent this id; if Step 2.5's resolution determined no baseline exists, the spec was locked to NEW_SYSTEM / MODIFICATION and `baselineSpecDocumentId` is omitted.
+   - For CHANGE_SPEC: also pass `baselineSpecDocumentId` — the value resolved in Step 2.5 (`currentSpec.baselineSpecDocumentId` from `usecase_load_context`, or the spec the user picked via `spec_document_list_by_usecase` when that was null). Never invent this id, and never substitute `baseCreationSpecId`; if Step 2.5's resolution determined no baseline exists, the spec was locked to NEW_SYSTEM / MODIFICATION and `baselineSpecDocumentId` is omitted.
    - `createdBy`, `createdByName`.
 
    Capture the returned `document.id` as `specDocId`.

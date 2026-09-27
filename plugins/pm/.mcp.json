@@ -5,7 +5,7 @@
       "args": [
         "-y",
         "mcp-remote@0.1.37",
-        "https://pmcollab.ai/mcp/pmc"
+        "${PMC_MCP_URL:-https://pmcollab.ai/mcp/pmc}"
       ]
     }
   }

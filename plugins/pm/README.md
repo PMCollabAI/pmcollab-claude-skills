@@ -21,8 +21,9 @@ That's it — there are no other plugins to chain.
 | [`/pm:load-code-context`](./commands/load-code-context.md) | Load a per-file extracted-facts pack (business rules + AI prompts + MCP/A2A endpoints + change-log) for the code backing one use case. |
 | [`/pm:chat-to-usecase`](./commands/chat-to-usecase.md) | Turn the current Claude chat into a brand-new `UseCase` with BXT detail bullets. Greenfield companion to `chat-to-spec-review`. |
 | [`/pm:chat-to-spec-review`](./commands/chat-to-spec-review.md) | Package the current Claude conversation as a PMCollab spec and kick off a Spec Review with Sphinx / Phoenix / Chimera. |
+| [`/pm:quick-change`](./commands/quick-change.md) | Express path: make the requested code edit immediately, then capture a CHANGE_SPEC from the diff behind it (reviewers run async, commit stamped with a `Change-Spec:` trailer). |
 | [`/pm:spec-align`](./commands/spec-align.md) | Reconcile spec-vs-code drift for one use case end-to-end (load spec + code contexts + live files, propose per-finding actions). |
-| [`/pm:process-queue`](./commands/process-queue.md) | Pick a Code Factory queue item, load the Claude starter kit, draft an implementation plan for PM review, and mark complete on PR. |
+| [`/pm:process-queue`](./commands/process-queue.md) | Pick up the next unit of Code Factory work — one item, or a **train** of several sharing one branch and one PR — load the starter kits, draft a plan for PM review, and submit on PR. Offers to form a train when items look groupable. |
 
 ## Skills — natural-language triggers
 
@@ -36,14 +37,41 @@ Every command also ships as an auto-trigger skill under [`./skills/`](./skills/)
 | `load-code-context` | "pull down the code snapshot," "load the related files," "show me what code touches this use case" |
 | `chat-to-usecase` | "make this a use case," "add this to PMCollab as a use case," "create a use case for this" |
 | `chat-to-spec-review` | "send this to PMCollab," "make a spec out of this," "open a spec review" |
+| `quick-change` | "just fix this," "quick change," "make this edit," "small tweak to X" |
 | `spec-align` | "align the spec for this use case," "check spec drift," "reconcile spec vs code" |
-| `process-queue` | "pick up a queue item," "process the next code factory task," "claim a queued code-gen job" |
+| `process-queue` | "pick up a queue item," "process the next code factory task," "claim a queued code-gen job," "batch these into one PR," "form a train" |
 
 Both forms run the same flow. Slash commands are for users who already know what they want; skills are for users describing what they want in their own words.
+
+### Routing between quick-change and chat-to-spec-review
+
+Both produce the same CHANGE_SPEC artifact and lifecycle — the difference is whether review gates the code or trails it. `quick-change` is for thin-context, well-scoped edits: the code change lands first and the spec is captured behind it. `chat-to-spec-review` is for changes that grew out of a design conversation worth harvesting, and for anything over quick-change's scope ceiling (>~5 files, multiple use cases, spec-linked surfaces, no promoted baseline) — quick-change escalates there automatically, carrying its draft along.
+
+## Capture nudge (opt-in Stop hook)
+
+The plugin ships a `Stop` hook that reminds you — once per stop, never looping — when a session is about to end while the repo has uncommitted changes or unpushed commits with no `Change-Spec:` trailer. It suggests capturing via `/pm:quick-change` or `/pm:chat-to-spec-review`; declining is fine (PMCollab's PR-side drift detection remains the backstop).
+
+It is **off by default**. Enable per repo:
+
+```bash
+git config pmc.captureNudge true
+```
+
+Disable again with `git config --unset pmc.captureNudge`.
 
 ## Auth setup
 
 The bundled `.mcp.json` points at `https://pmcollab.ai/mcp/pmc` and uses **OAuth** — no token to paste.
+
+### Testing against a non-prod environment
+
+The MCP URL resolves from the `PMC_MCP_URL` environment variable, falling back to `https://pmcollab.ai/mcp/pmc` when unset:
+
+```bash
+export PMC_MCP_URL=https://staging.pmcollab.ai/mcp/pmc
+```
+
+Set it before starting Claude Code (or in your shell profile), then restart Claude Code and run `/mcp` — `pmc-mcp` reconnects against the URL you set. Unset the variable (or set it back to the prod URL) to return to production.
 
 ### Default: OAuth (recommended)
 
@@ -69,7 +97,7 @@ For non-interactive environments, swap the bundled `.mcp.json` for the PAT varia
   "mcpServers": {
     "pmc-mcp": {
       "command": "npx",
-      "args": ["-y", "mcp-remote@0.1.37", "https://pmcollab.ai/mcp/pmc", "--header", "Authorization: Bearer ${PMC_PAT}"]
+      "args": ["-y", "mcp-remote@0.1.37", "${PMC_MCP_URL:-https://pmcollab.ai/mcp/pmc}", "--header", "Authorization: Bearer ${PMC_PAT}"]
     }
   }
 }
@@ -79,7 +107,7 @@ Then create a PAT in [pmcollab.ai](https://pmcollab.ai) → user menu → **Pers
 (scope it to the workspace(s) you'll work in) and export it:
 
 ```bash
-export PMC_PAT=pmc_pat_xxxxxxxxxxxxxxxx
+export PMC_PAT=ucc_pat_xxxxxxxxxxxxxxxx
 ```
 
 ### Troubleshooting
