@@ -75,9 +75,12 @@ Set it before starting Claude Code (or in your shell profile), then restart Clau
 
 ### Default: OAuth (recommended)
 
-On first connect, `mcp-remote` opens your browser to sign into PMCollab and approve the
-requested scopes. Tokens are cached locally (under `~/.mcp-auth`) and refreshed automatically;
-there is nothing to configure.
+The bundled `.mcp.json` declares `pmc-mcp` as a native remote HTTP server —
+no bridge process, no third-party npm dependency. PMCollab is itself an
+OAuth 2.1 Authorization Server for MCP (RFC 8414 / RFC 9728 discovery,
+dynamic client registration), so Claude Code discovers and drives the
+authorization-code flow directly against `pmcollab.ai`. Tokens are held and
+refreshed by Claude Code's own OAuth state; there is nothing to configure.
 
 1. Restart Claude Code, then run `/mcp` in a new session. `pmc-mcp` shows **needs auth** (or opens a browser automatically).
 2. Sign in with your PMCollab account and approve the consent screen.
@@ -86,18 +89,19 @@ there is nothing to configure.
 Smoke test: `/pm:select-workspace` should return your workspace list.
 
 Claude.ai / Claude Desktop users can add `https://pmcollab.ai/mcp/pmc` as a custom remote
-connector — it uses the same OAuth flow natively.
+connector — it's the same native OAuth 2.1 server, no plugin required.
 
 ### Alternative: Personal Access Token (headless / CI)
 
-For non-interactive environments, swap the bundled `.mcp.json` for the PAT variant:
+For non-interactive environments, swap the bundled `.mcp.json` for the PAT variant — still native HTTP, just with the token sent as a header instead of the OAuth flow:
 
 ```json
 {
   "mcpServers": {
     "pmc-mcp": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote@0.1.37", "${PMC_MCP_URL:-https://pmcollab.ai/mcp/pmc}", "--header", "Authorization: Bearer ${PMC_PAT}"]
+      "type": "http",
+      "url": "${PMC_MCP_URL:-https://pmcollab.ai/mcp/pmc}",
+      "headers": { "Authorization": "Bearer ${PMC_PAT}" }
     }
   }
 }
@@ -112,7 +116,7 @@ export PMC_PAT=ucc_pat_xxxxxxxxxxxxxxxx
 
 ### Troubleshooting
 
-- **Browser didn't open / stuck on "needs auth":** run `/mcp` and trigger reconnect, or clear cached OAuth state under `~/.mcp-auth` and retry.
+- **Browser didn't open / stuck on "needs auth":** run `/mcp` and trigger reconnect, or clear cached OAuth state and retry.
 - **"Spec Review not available at current maturity stage" (403):** the chat container the workflow creates starts at `spark`. The commands pass `maturityStage: 'shaping'` when starting the review. If you still see this error, the workspace may have a stricter gate — run `ideachat_assess_maturity` first.
 - **`401 invalid token`:** the OAuth access token expired and refresh failed (or a PAT was revoked) — reconnect via `/mcp` to re-run the OAuth flow, or generate a fresh PAT.
 
