@@ -1,7 +1,7 @@
 {
   "name": "pm",
   "displayName": "PMCollab",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "description": "PMCollab enables you to manage your product management workspaces from Claude. Interact with your agents, and take steps to move your product development forward.",
   "author": { "name": "PMCollab, Inc.", "url": "https://pmcollab.ai" },
   "homepage": "https://github.com/pmcollabai/pmcollab-claude-skills",

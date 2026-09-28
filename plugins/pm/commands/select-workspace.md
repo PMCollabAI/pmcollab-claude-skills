@@ -4,14 +4,14 @@ description: Pick a PMCollab workspace and resolve its workspaceId for the sessi
 
 # /pm:select-workspace
 
-Resolve a PMCollab workspace via the `pmc-mcp` MCP server. Identity (`userId` / `email` / `tenantId` / `displayName`) is auto-resolved from `PMC_PAT` — do NOT prompt the user for it.
+Resolve a PMCollab workspace via the `pmc-mcp` MCP server. Identity (`userId` / `email` / `tenantId` / `displayName`) is auto-resolved from the authenticated connection — do NOT prompt the user for it.
 
 Use-case selection is intentionally **out of scope** here — it lives in the companion `/pm:select-usecase` command, which expects a `workspaceId` that this command has already resolved.
 
 ## Hard rules
 
 - **Never invent IDs.** Every ID comes from an MCP tool response.
-- **Do NOT prompt for identity.** The `pmc-mcp` server resolves the caller's `userId`, `email`, `tenantId`, and `displayName` from the `PMC_PAT` automatically. Every identity-bearing tool (`workspace_list`, `usecase_create`, `spec_document_create`, `capability_create`, `spec_review_start`, `spec_readiness_review`, `spec_readiness_eval`, …) defaults these args from the PAT context. If you ever find yourself about to ask the user for `userId`, stop — the PAT already has it.
+- **Do NOT prompt for identity.** The `pmc-mcp` server resolves the caller's `userId`, `email`, `tenantId`, and `displayName` from the authenticated connection automatically. Every identity-bearing tool (`workspace_list`, `usecase_create`, `spec_document_create`, `capability_create`, `spec_review_start`, `spec_readiness_review`, `spec_readiness_eval`, …) defaults these args from that context. If you ever find yourself about to ask the user for `userId`, stop — the connection already has it.
 - **Surface workspace maturity in the picker.** It helps the caller anticipate downstream gates (e.g. Spec Review's minimum maturity).
 - **Do not list use cases here.** Hand off to `/pm:select-usecase` once `workspaceId` is resolved if the caller needs one.
 

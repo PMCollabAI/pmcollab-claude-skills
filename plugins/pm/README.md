@@ -1,6 +1,6 @@
 # pm — PMCollab Claude Code suite
 
-A single [Claude Code](https://docs.claude.com/en/docs/claude-code) plugin that bundles every PMCollab workflow as a `/pm:<command>` slash command, with the shared `pmc-mcp` MCP server registered automatically. One install gives you the whole surface.
+A single Claude Code plugin that bundles every PMCollab workflow as a `/pm:<command>` slash command, with the shared `pmc-mcp` MCP server registered automatically. One install gives you the whole surface.
 
 ## Install
 
@@ -51,14 +51,6 @@ Both produce the same CHANGE_SPEC artifact and lifecycle — the difference is w
 
 The plugin ships a `Stop` hook that reminds you — once per stop, never looping — when a session is about to end while the repo has uncommitted changes or unpushed commits with no `Change-Spec:` trailer. It suggests capturing via `/pm:quick-change` or `/pm:chat-to-spec-review`; declining is fine (PMCollab's PR-side drift detection remains the backstop).
 
-It is **off by default**. Enable per repo:
-
-```bash
-git config pmc.captureNudge true
-```
-
-Disable again with `git config --unset pmc.captureNudge`.
-
 ## Auth setup
 
 The bundled `.mcp.json` points at `https://pmcollab.ai/mcp/pmc` and uses **OAuth** — no token to paste.
@@ -68,7 +60,7 @@ The bundled `.mcp.json` points at `https://pmcollab.ai/mcp/pmc` and uses **OAuth
 The MCP URL resolves from the `PMC_MCP_URL` environment variable, falling back to `https://pmcollab.ai/mcp/pmc` when unset:
 
 ```bash
-export PMC_MCP_URL=https://staging.pmcollab.ai/mcp/pmc
+export PMC_MCP_URL=http://localhost:5000/mcp/pmc
 ```
 
 Set it before starting Claude Code (or in your shell profile), then restart Claude Code and run `/mcp` — `pmc-mcp` reconnects against the URL you set. Unset the variable (or set it back to the prod URL) to return to production.
@@ -91,28 +83,13 @@ Smoke test: `/pm:select-workspace` should return your workspace list.
 Claude.ai / Claude Desktop users can add `https://pmcollab.ai/mcp/pmc` as a custom remote
 connector — it's the same native OAuth 2.1 server, no plugin required.
 
-### Alternative: Personal Access Token (headless / CI)
+### Headless / CI environments
 
-For non-interactive environments, swap the bundled `.mcp.json` for the PAT variant — still native HTTP, just with the token sent as a header instead of the OAuth flow:
-
-```json
-{
-  "mcpServers": {
-    "pmc-mcp": {
-      "type": "http",
-      "url": "${PMC_MCP_URL:-https://pmcollab.ai/mcp/pmc}",
-      "headers": { "Authorization": "Bearer ${PMC_PAT}" }
-    }
-  }
-}
-```
-
-Then create a PAT in [pmcollab.ai](https://pmcollab.ai) → user menu → **Personal Access Tokens**
-(scope it to the workspace(s) you'll work in) and export it:
-
-```bash
-export PMC_PAT=ucc_pat_xxxxxxxxxxxxxxxx
-```
+The bundled configuration signs in through the browser, which a non-interactive
+environment cannot do. `pmc-mcp` also accepts a Personal Access Token for those
+cases — mint one from [pmcollab.ai](https://pmcollab.ai) under **Personal Access
+Tokens**, where the setup steps live. This plugin ships no credential
+configuration of its own: nothing here reads a token from your machine.
 
 ### Troubleshooting
 
@@ -152,7 +129,7 @@ To migrate:
 /plugin install pm@pmcollab-claude-skills
 ```
 
-The MCP-server identifier (`pmc-mcp`, as shown in `/mcp`) is unchanged — your existing `PMC_PAT` continues to work without modification.
+The MCP-server identifier (`pmc-mcp`, as shown in `/mcp`) is unchanged — your existing credentials continue to work without modification.
 
 ## License
 

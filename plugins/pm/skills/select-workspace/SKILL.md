@@ -1,6 +1,6 @@
 ---
 name: select-workspace
-description: Pick a PMCollab workspace for a downstream workflow. Use when another PMCollab skill delegates with "select a PMCollab workspace," when the user says "pick a workspace" / "switch PMCollab workspaces," or when a workflow needs workspaceId. Returns workspaceId + workspaceTitle. Identity (userId / email / displayName / tenantId) is auto-resolved by the pmc-mcp server from the PMC_PAT — do NOT prompt the user for it. Use-case selection is a separate skill (select-usecase) — do NOT pick use cases here.
+description: Pick a PMCollab workspace for a downstream workflow. Use when another PMCollab skill delegates with "select a PMCollab workspace," when the user says "pick a workspace" / "switch PMCollab workspaces," or when a workflow needs workspaceId. Returns workspaceId + workspaceTitle. Identity (userId / email / displayName / tenantId) is auto-resolved by the pmc-mcp server from the authenticated connection — do NOT prompt the user for it. Use-case selection is a separate skill (select-usecase) — do NOT pick use cases here.
 ---
 
 # select-workspace
@@ -20,7 +20,7 @@ If a workspace was chosen earlier in the session and the user hasn't signalled a
 ## Hard rules
 
 - **Never invent IDs.** Every ID comes from an MCP tool response.
-- **Do NOT prompt for identity.** The `pmc-mcp` server resolves the caller's `userId`, `email`, `tenantId`, and `displayName` from the `PMC_PAT` automatically. Every identity-bearing tool (`workspace_list`, `usecase_create`, `spec_document_create`, `capability_create`, `spec_review_start`, `spec_readiness_review`, `spec_readiness_eval`, …) defaults these args from the PAT context. If you ever find yourself about to ask the user for `userId`, stop — the PAT already has it.
+- **Do NOT prompt for identity.** The `pmc-mcp` server resolves the caller's `userId`, `email`, `tenantId`, and `displayName` from the authenticated connection automatically. Every identity-bearing tool (`workspace_list`, `usecase_create`, `spec_document_create`, `capability_create`, `spec_review_start`, `spec_readiness_review`, `spec_readiness_eval`, …) defaults these args from that context. If you ever find yourself about to ask the user for `userId`, stop — the connection already has it.
 - **Surface workspace maturity in the picker.** It helps the caller anticipate downstream gates (e.g. Spec Review's minimum maturity).
 - **Do not list use cases here.** Hand off to `select-usecase` once `workspaceId` is resolved if the caller needs one.
 

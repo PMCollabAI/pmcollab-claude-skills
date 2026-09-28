@@ -9,7 +9,7 @@
       "name": "pm",
       "source": "./plugins/pm",
       "description": "PMCollab enables you to manage your product management workspaces from Claude. Interact with your agents, and take steps to move your product development forward.",
-      "version": "0.5.3",
+      "version": "0.5.4",
       "category": "product-management"
     }
   ]

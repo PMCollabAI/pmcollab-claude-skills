@@ -1,6 +1,6 @@
 # PMCollab Claude Code Skills
 
-A [Claude Code](https://docs.claude.com/en/docs/claude-code) plugin marketplace published by [PMCollab, Inc.](https://pmcollab.ai). One plugin, every PMCollab workflow.
+A Claude Code plugin marketplace published by [PMCollab, Inc.](https://pmcollab.ai). One plugin, every PMCollab workflow.
 
 ## Install
 
