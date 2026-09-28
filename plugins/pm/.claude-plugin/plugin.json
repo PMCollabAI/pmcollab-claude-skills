@@ -1,7 +1,8 @@
 {
   "name": "pm",
-  "version": "0.5.2",
-  "description": "PMCollab Claude Code suite — workspace + use-case pickers, context loaders, chat-to-usecase, chat-to-spec-review, quick-change, spec-align, process-queue (single items and trains alike). Ships as /pm:<command> slash commands and auto-trigger skills, with the shared pmc-mcp MCP server and an opt-in uncaptured-change Stop hook bundled.",
+  "displayName": "PMCollab",
+  "version": "0.5.3",
+  "description": "PMCollab enables you to manage your product management workspaces from Claude. Interact with your agents, and take steps to move your product development forward.",
   "author": { "name": "PMCollab, Inc.", "url": "https://pmcollab.ai" },
   "homepage": "https://github.com/pmcollabai/pmcollab-claude-skills",
   "privacyPolicyUrl": "https://pmcollab.ai/privacy"

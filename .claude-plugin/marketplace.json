@@ -8,8 +8,8 @@
     {
       "name": "pm",
       "source": "./plugins/pm",
-      "description": "PMCollab Claude Code suite — 9 /pm:<command> slash commands (select-workspace, select-usecase, load-usecase-context, load-code-context, chat-to-usecase, chat-to-spec-review, quick-change, spec-align, process-queue) plus the shared pmc-mcp MCP server and an opt-in uncaptured-change Stop hook.",
-      "version": "0.5.2",
+      "description": "PMCollab enables you to manage your product management workspaces from Claude. Interact with your agents, and take steps to move your product development forward.",
+      "version": "0.5.3",
       "category": "product-management"
     }
   ]
