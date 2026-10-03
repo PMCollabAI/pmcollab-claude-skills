@@ -51,6 +51,14 @@ Both produce the same CHANGE_SPEC artifact and lifecycle — the difference is w
 
 The plugin ships a `Stop` hook that reminds you — once per stop, never looping — when a session is about to end while the repo has uncommitted changes or unpushed commits with no `Change-Spec:` trailer. It suggests capturing via `/pm:quick-change` or `/pm:chat-to-spec-review`; declining is fine (PMCollab's PR-side drift detection remains the backstop).
 
+It is **off by default**. Enable per repo:
+
+```bash
+git config pmc.captureNudge true
+```
+
+Disable again with `git config --unset pmc.captureNudge`.
+
 ## Auth setup
 
 The bundled `.mcp.json` points at `https://pmcollab.ai/mcp/pmc` and uses **OAuth** — no token to paste.

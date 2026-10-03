@@ -1,6 +1,6 @@
 ---
 name: chat-to-usecase
-description: Turn the current Claude chat into a new PMCollab UseCase with its BXT detail bullets. Use when the user says "make this a use case," "add this to PMCollab as a use case," "create a use case for this," or runs the namespaced slash command /pm:chat-to-usecase. Walks pick-workspace -> distill chat into a draft -> ask follow-ups for missing essentials (title, problem, businessObjective, plus keyPersonas or valueProposition) -> confirm -> call usecase_create. Refuses with the existing id when a use case with the same title already exists. Companion to chat-to-spec-review, which assumes the use case exists.
+description: Turn the current chat into a new PMCollab UseCase with its BXT detail bullets. Use when the user says "make this a use case," "add this to PMCollab as a use case," "create a use case for this," or runs the namespaced slash command /pm:chat-to-usecase. Walks pick-workspace -> distill chat into a draft -> ask follow-ups for missing essentials (title, problem, businessObjective, plus keyPersonas or valueProposition) -> confirm -> call usecase_create. Refuses with the existing id when a use case with the same title already exists. Companion to chat-to-spec-review, which assumes the use case exists.
 ---
 
 # chat-to-usecase

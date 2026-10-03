@@ -5,7 +5,7 @@ description: Load a tight LLM-context pack for a selected PMCollab use case via 
 
 # load-usecase-context
 
-Hydrate Claude's working memory for one use case in one round trip. Calls the MCP tool `usecase_load_context` with `{workspaceId, useCaseId}` and returns its pack as-is — no synthesis, no rephrasing.
+Hydrate the agent's working memory for one use case in one round trip. Calls the MCP tool `usecase_load_context` with `{workspaceId, useCaseId}` and returns its pack as-is — no synthesis, no rephrasing.
 
 ## When to invoke
 

@@ -1,6 +1,6 @@
 ---
 name: chat-to-spec-review
-description: Convert the current Claude chat into a PMCollab spec document, open it in a Spec Review session with the Sphinx / Phoenix / Chimera reviewer agents, and file the work on the Code Factory queue so the pull request that delivers it can be handed back to the PM. Use when the user wants to "turn this conversation into a spec," "send this to PMCollab," "kick off a spec review," "create a change spec from this discussion," or runs `/pm:chat-to-spec-review`. Also use its Step 8 when the code for a spec this skill created has been pushed and the pull request needs submitting for approval. For a thin-context "just make this small change" request with no design discussion to harvest, route to `quick-change` instead — it edits first and captures the change spec behind the edit.
+description: Convert the current chat into a PMCollab spec document, open it in a Spec Review session with the Sphinx / Phoenix / Chimera reviewer agents, and file the work on the Code Factory queue so the pull request that delivers it can be handed back to the PM. Use when the user wants to "turn this conversation into a spec," "send this to PMCollab," "kick off a spec review," "create a change spec from this discussion," or runs `/pm:chat-to-spec-review`. Also use its Step 8 when the code for a spec this skill created has been pushed and the pull request needs submitting for approval. For a thin-context "just make this small change" request with no design discussion to harvest, route to `quick-change` instead — it edits first and captures the change spec behind the edit.
 ---
 
 # chat-to-spec-review
@@ -14,7 +14,7 @@ Trigger automatically when the user says any of:
 - "Open a spec review for this" / "Kick this over to Sphinx and the others"
 - They run the namespaced slash command `/pm:chat-to-spec-review`
 
-**Routing note:** this skill and `quick-change` produce the same CHANGE_SPEC artifact — the difference is whether review gates the code or trails it. Use this skill when the conversation itself carries design thinking worth harvesting into the spec, or the change exceeds quick-change's scope ceiling (>~5 files, multiple use cases, spec-linked surfaces, no promoted baseline). Use `quick-change` when the user just wants a small, well-scoped edit made and the spec captured behind it. Announce the route in one line; the user can override.
+**Routing note:** this skill and `quick-change` produce the same CHANGE_SPEC artifact — the difference is whether review gates the code or trails it. Use this skill when the conversation itself carries design thinking worth harvesting into the spec, or the change exceeds quick-change's scope ceiling (>~5 files, multiple use cases, spec-linked surfaces, no promoted baseline). Use `quick-change` when the user just wants a small, well-scoped edit made and the spec captured behind it. `quick-change` edits code first, so it needs a repository: in a host that cannot edit one, this skill is the only route, and the spec is filed for a coding agent to build. Announce the route in one line; the user can override.
 
 ## Hard rules
 
@@ -181,7 +181,7 @@ A spec that isn't on a release is invisible to release planning — it shows up 
 A spec with no queue item has no way to finish. Promotion is not something the spec does on its own: the item's approval gate is what raises the WORK STREAM card, and completing it is what transitions the spec to `pending_promotion` so the promotion card appears. Skip this step and the spec sits in draft with nothing to approve, however good the code is.
 
 1. Call `codefactory_queue_create` with `{workspaceId, specDocumentId}`. For a CHANGE_SPEC also pass `codeGenScope: 'change_only'` — the work is a delta on a promoted baseline, not a regeneration of the surface.
-2. `claim` defaults to `true`, which is what you want when you are about to build this yourself. Pass `claim: false` only when you are filing the work for somebody else to pick up, and say so in Step 7.
+2. `claim` defaults to `true`, which is what you want when you are about to build this yourself. Pass `claim: false` only when you are filing the work for somebody else to pick up, and say so in Step 7. **A host that cannot edit a repository always files with `claim: false`** — Microsoft Copilot, a claude.ai chat, any session with no checkout and no way to push. You will not write this code, and a claim you cannot work holds the item away from the picker who can.
 3. Capture `itemId` — Step 8 needs it.
 4. `reused: true` means an open item already existed for this spec and you got it back instead of a second one. That is a success: carry on with the `itemId` returned. Never file a second item for one spec.
 5. `claimWarning` means the item was filed but another picker holds the claim. The work exists — report it and do not file again.
@@ -219,11 +219,13 @@ Print a compact recap:
 - Capability ID + behavior count (if created)
 - Deep link to the Spec Review
 
-Then say plainly what is still owed: the reviewers' critiques are read in the Spec Review modal, and when the code is written Step 8 hands the pull request to the PM.
+Then say plainly what is still owed: the reviewers' critiques are read in the Spec Review modal, and when the code is written Step 8 hands the pull request to the PM. In a host that cannot edit a repository, this summary is where the skill ENDS: say that the item waits on the Code Factory queue for a coding agent (`pm:process-queue` in Claude Code, or "Assign Agent" in PMCollab), and do not attempt Step 8.
 
 ## Step 8 — Hand the pull request to the PM
 
 This is the step that finishes the work, and it runs whenever the code for this spec gets written — in this session or a later one. It is the same hand-off `pm:process-queue` makes, so a spec delivered through this skill and one delivered through the queue reach the PM identically.
+
+It needs a repository you can commit to and push from. Without one, skip this step entirely — the queue item filed in Step 5.6 is the hand-off, and whoever claims it runs these steps.
 
 1. **Stamp the commit.** Put `Change-Spec: <specDocId>` on its own line in a commit message on the branch. It is the join that folds the merged PR into the release entry Step 5.5 created instead of the release gaining a second entry, and it is what stops PR-open capture flagging the change as uncaptured. On an associated spec it is load-bearing, not optional.
 2. **Push the pull request.**

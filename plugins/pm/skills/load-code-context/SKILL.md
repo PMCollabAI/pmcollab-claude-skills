@@ -5,7 +5,7 @@ description: Load a tight per-file extracted-facts pack for the code that backs 
 
 # load-code-context
 
-Hydrate Claude with the code-side context for a use case in one round trip. Calls the MCP tool `code_load_context` with `{workspaceId, useCaseId}` and returns its pack as-is — no synthesis, no rephrasing.
+Hydrate the agent with the code-side context for a use case in one round trip. Calls the MCP tool `code_load_context` with `{workspaceId, useCaseId}` and returns its pack as-is — no synthesis, no rephrasing.
 
 ## When to invoke
 
