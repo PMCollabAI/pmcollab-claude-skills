@@ -3,15 +3,6 @@
     "pmc-mcp": {
       "type": "http",
       "url": "${PMC_MCP_URL:-https://pmcollab.ai/mcp/pmc}"
-    },
-    "code-session": {
-      "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/channel/code-session.js"],
-      "env": {
-        "PMC_CODE_SESSION_TOKEN": "${user_config.code_session_token}",
-        "PMC_BASE_URL": "${PMC_BASE_URL:-https://pmcollab.ai}",
-        "PMC_PROJECT_DIR": "${CLAUDE_PROJECT_DIR}"
-      }
     }
   }
 }

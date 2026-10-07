@@ -40,7 +40,6 @@ Every command also ships as an auto-trigger skill under [`./skills/`](./skills/)
 | `quick-change` | "just fix this," "quick change," "make this edit," "small tweak to X" |
 | `spec-align` | "align the spec for this use case," "check spec drift," "reconcile spec vs code" |
 | `process-queue` | "pick up a queue item," "process the next code factory task," "claim a queued code-gen job," "batch these into one PR," "form a train" |
-| `code-session-bind` | "bind this repo to a workspace," "switch the code session to another workspace," `/pm:code-session-bind <workspaceId>` |
 
 Both forms run the same flow. Slash commands are for users who already know what they want; skills are for users describing what they want in their own words.
 
@@ -59,17 +58,6 @@ git config pmc.captureNudge true
 ```
 
 Disable again with `git config --unset pmc.captureNudge`.
-
-## PMCollab mentions (@Code channel)
-
-Typing `@Code <request>` in PMCollab (APM chat or a todo note) can route the request to **your own** Claude Code session in the workspace's repository. Replies, drafted change specs and (if your workspace allows it) tool-approval prompts flow back into PMCollab. The plugin ships the local server for this as `channel/code-session.js` (built from `code-session-bridge/` in the PMCollab repository — do not edit it).
-
-1. In PMCollab, open Workspace settings → Integrations → Code session and create a code-session token.
-2. Enter it when Claude Code asks for the **PMCollab mentions** configuration.
-3. Launch with the channel enabled — `claude --channels plugin:pm@pmcollab-claude-skills` where your organization allowlists the plugin, otherwise `claude --dangerously-load-development-channels plugin:pm@pmcollab-claude-skills`.
-4. If the token covers several workspaces, run `/pm:code-session-bind <workspaceId>` once per repository.
-
-A dedicated session for PMCollab works best: mentions queue and arrive on the session's next turn. Only one session per workspace receives mentions: a second one waits on standby (and takes over by itself when the first exits). To switch on purpose, ask the second session to take over PMCollab mentions (`take_over_mentions` tool).
 
 ## Auth setup
 

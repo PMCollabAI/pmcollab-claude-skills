@@ -1,24 +1,10 @@
 {
   "name": "pm",
   "displayName": "PMCollab",
-  "version": "0.5.6",
+  "version": "0.5.7",
   "description": "PMCollab enables you to manage your product management workspaces from Claude. Interact with your agents, and take steps to move your product development forward.",
   "author": { "name": "PMCollab, Inc.", "url": "https://pmcollab.ai" },
   "homepage": "https://github.com/pmcollabai/pmcollab-claude-skills",
   "privacyPolicyUrl": "https://pmcollab.ai/privacy",
-  "termsOfServiceUrl": "https://pmcollab.ai/terms",
-  "channels": [
-    {
-      "server": "code-session",
-      "displayName": "PMCollab mentions",
-      "userConfig": {
-        "code_session_token": {
-          "type": "string",
-          "title": "Code-session token",
-          "description": "Your PMCollab code-session token (PMCollab: Workspace settings, Integrations, Code session). It lets the @Code mentions you write in PMCollab reach this session. It is a PMCollab token, never a Claude credential.",
-          "sensitive": true
-        }
-      }
-    }
-  ]
+  "termsOfServiceUrl": "https://pmcollab.ai/terms"
 }
